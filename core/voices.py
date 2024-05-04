@@ -1,7 +1,7 @@
 import pyttsx3
 from gtts import gTTS
 from abc import ABC, abstractmethod
-from core.bot_settings import get_logger
+from core.log_settings import get_logger
 
 log = get_logger(__name__)
 

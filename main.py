@@ -4,8 +4,9 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from telebot import types
-from core.bot_settings import GENERATORS, get_logger
-from core.bot_speaker import PDFSpeaker
+from core.log_settings import get_logger
+from core.engine import Engine
+from core.speakers import PDFSpeaker
 
 load_dotenv()
 
@@ -13,7 +14,8 @@ load_dotenv()
 TOKEN: str = os.environ.get("speaker_bot")
 bot = telebot.TeleBot(TOKEN)
 
-log = get_logger(__name__) 
+log = get_logger(__name__)
+GENERATORS = Engine()
 
 next_markup = telebot.types.InlineKeyboardMarkup()
 button_next = telebot.types.InlineKeyboardButton(
@@ -117,8 +119,9 @@ def get_psge(message: types.Message):
 def create_gen(message: types.Message, page: int = 0):
     """Создаем генератор и записываем его в словарь {имя_пользователя/генератор}"""
     try:
-        GENERATORS.set_genegator(
+        GENERATORS.set_worker(
             name=message.chat.username,
+            # speaker_name='gTTS',
             page=page,
         )
         return speak_text(message)

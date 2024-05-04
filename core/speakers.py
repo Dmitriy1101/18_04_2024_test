@@ -1,11 +1,13 @@
-from fileinput import filename
+"""
+
+"""
 import PyPDF2
 from pathlib import Path
 from typing import Generator
 from pyttsx3.engine import Engine
 from abc import ABC, abstractmethod
-from core.bot_types import Speaker
-from core.bot_settings import get_logger
+from core.engine_types import Speaker
+from core.log_settings import get_logger
 
 
 log = get_logger(__name__)
@@ -16,7 +18,7 @@ class TextSpeakerABC(ABC):
     __file_type: задаёт тип рабочих файлов например '.pdf'
     """
 
-    _file_type: str
+    __file_type: str
 
     def __init__(self, file_name_path: str, speaker: Speaker) -> None:
         self.init(file_name_path, speaker)
@@ -32,16 +34,16 @@ class TextSpeakerABC(ABC):
     def is_my_file_name(self, file_name: str) -> bool:
         """Вернёт True если это имя pdf файла, или выбросит ошибку"""
 
-        if not file_name[-4:] == self.file_type or len(file_name) < 5:
-            log.debug('Ошибка типа файла чтения.')
-            raise NameError(f"{file_name} <- Не имя {self._file_type[1:]} файла")
+        if not file_name[-4:] == self.type or len(file_name) < 5:
+            log.debug("Ошибка типа файла чтения.")
+            raise NameError(f"{file_name} <- Не имя {self.type[1:]} файла")
         return True
 
     def is_mp3_file_name(self, file_name: str) -> bool:
         """Вернёт True если это имя mp3 файла, или выбросит ошибку"""
 
         if not file_name[-4:] == ".mp3" or len(file_name) < 5:
-            log.debug('Ошибка типа файла озвучки.')
+            log.debug("Ошибка типа файла озвучки.")
             raise NameError(f"{file_name} <- Не имя mp3 файла")
         return True
 
@@ -50,7 +52,7 @@ class TextSpeakerABC(ABC):
 
         self.path: Path = Path(__file__).resolve().parent
         self.set_path_my_file(path_to_file=path_to_file)
-        mp3_file: str = path_to_file.replace(self.file_type, ".mp3")
+        mp3_file: str = path_to_file.replace(self.type, ".mp3")
         self.set_path_mp3_file(path_to_file=mp3_file)
         return True
 
@@ -68,9 +70,10 @@ class TextSpeakerABC(ABC):
         self.file_name_mp3: Path = Path(self.path, path_to_file)
         return True
 
+    @classmethod
     @property
-    def file_type(self):
-        return self._file_type
+    def type(cls):
+        return getattr(cls, f"_{cls.__name__}__file_type")
 
     @property
     def get_engine(self) -> Engine:
@@ -100,7 +103,7 @@ class PDFSpeaker(TextSpeakerABC):
     При инициализации передай путь к файлу.
     """
 
-    _file_type: str = ".pdf"
+    __file_type: str = ".pdf"
 
     def __init__(self, file_name_path: str, speaker: Speaker) -> None:
         self.init(file_name_path, speaker)
