@@ -1,5 +1,5 @@
 """
-
+Обработчик текста.
 """
 import PyPDF2
 from pathlib import Path

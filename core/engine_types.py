@@ -21,3 +21,8 @@ class TextTeam(Protocol):
 
     def save_to_file(text: str):
         ...
+
+    @classmethod
+    @property
+    def type():
+        ...

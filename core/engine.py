@@ -10,6 +10,7 @@ from core.log_settings import get_logger
 
 log = get_logger(__name__)
 
+
 class Worker:
     """
     Kласс предназначенный для работы с файлом
@@ -64,22 +65,22 @@ class Engine:
         worker = Worker(reader(path, speaker), page)
         self.generators[name] = worker
         return True
-    
+
     def __find_reader_or_dafault(self, reader_name: str) -> TextTeam:
-        '''Ищем обработчик если не находим, берём первый.'''
+        """Ищем обработчик если не находим, берём первый."""
 
         reader: TextTeam = self.readers.get(reader_name)
         if not reader:
-            log.debug(f'Значение {reader_name} не найдено.')
+            log.debug(f"Значение {reader_name} не найдено.")
             reader = tuple(self.readers.values())[0]
         return reader
-    
+
     def __find_speaker_or_dafault(self, speaker_name: str) -> Speaker:
-        '''Ищем обработчик если не находим, берём первый.'''
+        """Ищем обработчик если не находим, берём первый."""
 
         speaker: Speaker = self.speakers.get(speaker_name)
         if not speaker:
-            log.debug(f'Значение {speaker_name} не найдено.')
+            log.debug(f"Значение {speaker_name} не найдено.")
             speaker = tuple(self.speakers.values())[1]
         return speaker
 
@@ -89,7 +90,7 @@ class Engine:
         """
         gen = self.generators.get(name)
         if gen:
-            log.debug(f'Ошибка получения обработчика файла для пользователя: {name}')
+            log.debug(f"Ошибка получения обработчика файла для пользователя: {name}")
             return gen.reader
         return None
 
@@ -100,6 +101,6 @@ class Engine:
 
         gen: Worker | None = self.generators.get(name)
         if gen:
-            log.debug(f'Ошибка получения генератора для пользователя: {name}')
+            log.debug(f"Ошибка получения генератора для пользователя: {name}")
             return gen.generator
         return None
