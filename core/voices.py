@@ -1,9 +1,10 @@
 import pyttsx3
+import logging
 from gtts import gTTS
 from abc import ABC, abstractmethod
-from core.log_settings import get_logger
 
-log = get_logger(__name__)
+
+log = logging.getLogger(__name__)
 
 
 class SpeakersABC(ABC):

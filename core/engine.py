@@ -2,13 +2,16 @@
 Тут описаны объекты связывающие пользователя с обработчиками файла,
 для получения текста страниц и генерации голоса.
 """
-from typing import Generator
+
+import os
+import logging
+from typing import Generator, Literal
 from pathlib import Path
 from core.engine_types import TextTeam, Speaker
 from core.settings import SPEAKERS, READERS
-from core.log_settings import get_logger
 
-log = get_logger(__name__)
+
+log = logging.getLogger(__name__)
 
 
 class Worker:
@@ -43,8 +46,11 @@ class Engine:
     readers: dict[str, TextTeam] = READERS
     generators: dict[str, Worker] = {}
 
+    def __init__(self) -> None:
+        self.has_tmp_dir()
+
     def get_filename(self, name: str, reader: TextTeam) -> str:
-        """Задаём имя+путь загруженному фаулу и путь."""
+        """Получаем имя+путь загруженному фаулу и путь."""
 
         return str(Path(self.temp_path, f"temp_{name}{reader.type}"))
 
@@ -104,3 +110,33 @@ class Engine:
             log.debug(f"Ошибка получения генератора для пользователя: {name}")
             return gen.generator
         return None
+
+    def has_tmp_dir(self) -> None:
+        """Если нету директории temp создаём."""
+
+        if not os.path.isdir(self.temp_path):
+            os.mkdir(self.temp_path)
+
+    def set_reader(
+        self, name: str, reader_name: str, page: int = 0
+    ) -> Literal[True] | None:
+        """Меняем обработчик текста."""
+
+        reader: TextTeam | None = self.readers.get(reader_name)
+        worker: Worker | None = self.generators.get(name)
+        if not worker or not reader:
+            return None
+        path: str = self.get_filename(name, reader)
+        speaker: Speaker = worker.reader.get_engine.__class__
+        self.generators[name] = Worker(reader(path, speaker), page)
+        return True
+
+    def set_speaker(self, name: str, speaker_name: str) -> Literal[True] | None:
+        """Задаём новый генератор голоса."""
+
+        worker: Worker | None = self.generators.get(name)
+        speaker: Speaker | None = self.speakers.get(speaker_name)
+        if not worker or not speaker:
+            return None
+        worker.reader.set_engine(speaker.__class__)
+        return True

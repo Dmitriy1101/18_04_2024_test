@@ -1,10 +1,10 @@
 from typing import Generator
 import telebot
 import os
+import logging
 from pathlib import Path
 from dotenv import load_dotenv
 from telebot import types
-from core.log_settings import get_logger
 from core.engine import Engine
 from core.speakers import PDFSpeaker
 
@@ -14,7 +14,7 @@ load_dotenv()
 TOKEN: str = os.environ.get("speaker_bot")
 bot = telebot.TeleBot(TOKEN)
 
-log = get_logger(__name__)
+log = logging.getLogger(__name__)
 GENERATORS = Engine()
 
 next_markup = telebot.types.InlineKeyboardMarkup()

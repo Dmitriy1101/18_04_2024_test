@@ -7,6 +7,7 @@ READERS: dict[str, TextTeam] - перечисленны все обработч�
 from core.engine_types import *
 from core.speakers import PDFSpeaker
 from core.voices import Speaker_gTTS, Speaker_pyttsx3
+import logging
 
 
 SPEAKERS: dict[str, Speaker] = {
@@ -17,3 +18,7 @@ SPEAKERS: dict[str, Speaker] = {
 READERS: dict[str, TextTeam] = {
     "pdf": PDFSpeaker,
 }
+
+logging.basicConfig(
+    level=logging.INFO, format="%(name)s %(asctime)s %(levelname)s %(message)s"
+)

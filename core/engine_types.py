@@ -1,4 +1,5 @@
 from typing import Generator, Protocol
+from pathlib import Path
 
 
 class Speaker(Protocol):
@@ -7,10 +8,13 @@ class Speaker(Protocol):
 
 
 class TextTeam(Protocol):
+    file_name: Path = ...
+    file_name_mp3: Path = ...
+
     def __init__(file_name_path: str, speaker: Speaker) -> None:
         ...
 
-    def get_engine():
+    def get_engine() -> Speaker:
         ...
 
     def set_engine(speaker: Speaker):
@@ -24,5 +28,5 @@ class TextTeam(Protocol):
 
     @classmethod
     @property
-    def type():
+    def type() -> str:
         ...

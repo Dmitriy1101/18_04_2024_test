@@ -2,15 +2,14 @@
 Обработчик текста.
 """
 import PyPDF2
+import logging
 from pathlib import Path
 from typing import Generator
-from pyttsx3.engine import Engine
 from abc import ABC, abstractmethod
 from core.engine_types import Speaker
-from core.log_settings import get_logger
 
 
-log = get_logger(__name__)
+log = logging.getLogger(__name__)
 
 
 class TextSpeakerABC(ABC):
@@ -34,9 +33,9 @@ class TextSpeakerABC(ABC):
     def is_my_file_name(self, file_name: str) -> bool:
         """Вернёт True если это имя pdf файла, или выбросит ошибку"""
 
-        if not file_name[-4:] == self.type or len(file_name) < 5:
+        if not file_name or not file_name[-4:] == self.type or len(file_name) < 5:
             log.debug("Ошибка типа файла чтения.")
-            raise NameError(f"{file_name} <- Не имя {self.type[1:]} файла")
+            raise ValueError(f"{file_name} <- Не имя {self.type[1:]} файла")
         return True
 
     def is_mp3_file_name(self, file_name: str) -> bool:
@@ -44,7 +43,7 @@ class TextSpeakerABC(ABC):
 
         if not file_name[-4:] == ".mp3" or len(file_name) < 5:
             log.debug("Ошибка типа файла озвучки.")
-            raise NameError(f"{file_name} <- Не имя mp3 файла")
+            raise ValueError(f"{file_name} <- Не имя mp3 файла")
         return True
 
     def set_path_file(self, path_to_file: str) -> bool:
@@ -72,11 +71,11 @@ class TextSpeakerABC(ABC):
 
     @classmethod
     @property
-    def type(cls):
+    def type(cls) -> str:
         return getattr(cls, f"_{cls.__name__}__file_type")
 
     @property
-    def get_engine(self) -> Engine:
+    def get_engine(self) -> Speaker:
         """Получаем обект озвучки."""
         return self._engine
 
