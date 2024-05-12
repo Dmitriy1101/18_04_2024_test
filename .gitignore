@@ -2,5 +2,5 @@
 .vscode
 .pylintrc
 venv
-temp/**
+temp
 __pycache__

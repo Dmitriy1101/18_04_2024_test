@@ -8,6 +8,8 @@ from telebot import types
 from core.engine import Engine
 from core.speakers import PDFSpeaker
 
+
+# Извлекаем токен в окружение
 load_dotenv()
 
 # Инициализация Telegram бота
@@ -15,24 +17,14 @@ TOKEN: str = os.environ.get("speaker_bot")
 bot = telebot.TeleBot(TOKEN)
 
 log = logging.getLogger(__name__)
+# Обработчики файлов.
 GENERATORS = Engine()
 
-next_markup = telebot.types.InlineKeyboardMarkup()
-button_next = telebot.types.InlineKeyboardButton(
-    text="Следующая страница", callback_data="next_page"
-)
-button_menu = telebot.types.InlineKeyboardButton(text="Меню", callback_data="menu")
-next_markup.add(button_next, button_menu)
-
-
-@bot.callback_query_handler(func=lambda call: True)
-def call_main(call: types.CallbackQuery):
-    """Основной обработчик функций обратного вызова."""
-
-    if call.data.lower() == "next_page":
-        speak_text(call.message)
-    elif call.data.lower() == "menu":
-        menu(call.message)
+button_menu = types.KeyboardButton("Домой")
+button_download_pdf = types.KeyboardButton("Загрузить PDF файл")
+button_use_old = types.KeyboardButton("Использовать загруженый файл")
+button_start_page = types.KeyboardButton("С начала")
+button_next = types.KeyboardButton("Следующая страница")
 
 
 def get_filename(message: types.Message) -> str:
@@ -47,7 +39,7 @@ def get_file(file_name: str) -> bool:
     return os.path.isfile(Path(GENERATORS.temp_path, file_name))
 
 
-@bot.message_handler(commands=["start"])
+@bot.message_handler(commands=["start", "Домой", "H", "Д"])
 def send_welcome(message: types.Message):
     """Обработчик команды start"""
 
@@ -56,15 +48,30 @@ def send_welcome(message: types.Message):
     menu(message)
 
 
+@bot.message_handler(content_types=["text"])
+def keyboard_actions(message: types.Message):
+    """
+    Метод обработки текста сообщений вне контекста прошлых действий.
+    """
+
+    if message.text.lower() == "загрузить pdf файл":
+        bot.send_message(message.chat.id, "Отправьте PDF файл.")
+    elif message.text.lower() == "домой":
+        menu(message)
+    elif message.text == "Использовать загруженый файл":
+        bot.send_message(message.chat.id, "Принято.")
+        start_read(message)
+
+
 def menu(message: types.Message):
     """Главное меню бота."""
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
     buts: list[types.KeyboardButton] = []
-    buts.append(types.KeyboardButton("Загрузить PDF файл"))
+    buts.append(button_download_pdf)
 
     if get_file(get_filename(message)):
-        buts.append(types.KeyboardButton("Использовать загруженый файл"))
+        buts.append(button_use_old)
     bot.send_message(
         message.chat.id,
         "Отправь мне прикреплённый PDF файл, я могу озвучить его текст. \
@@ -75,20 +82,26 @@ def menu(message: types.Message):
 
 
 def got_it(message: types.Message):
-    """Обработка выбора сделанного на стартовое сообщение."""
+    """
+    Обработка выбора сделанного на стартовое сообщение,
+    в случае неверной комманды вернёт назад.
+    """
 
     if message.text == "Загрузить PDF файл":
         bot.send_message(message.chat.id, "Отправьте PDF файл.")
     elif message.text == "Использовать загруженый файл":
         bot.send_message(message.chat.id, "Принято.")
         start_read(message)
+    else:
+        bot.reply_to("Возникли проблемы с вашими руками!")
+        menu(message)
 
 
 def start_read(message: types.Message):
-    """Спрашиваем про страницу."""
+    """Спрашиваем начальную страницу чтения."""
 
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
-    markup.row(types.KeyboardButton("С начала"), types.KeyboardButton("Домой"))
+    markup.row(button_start_page, button_menu)
     bot.send_message(
         message.chat.id,
         "Читаем с начала? Или введи номер страницы.",
@@ -97,23 +110,24 @@ def start_read(message: types.Message):
     bot.register_next_step_handler(message, get_psge)
 
 
-def get_mp3_filename(message: types.Message) -> str:
-    """Задаём имя mp3 фаулу."""
-
-    return f"temp_{message.chat.username}.mp3"
-
-
 def get_psge(message: types.Message):
     """Узнаём страницу с которой читаемю"""
 
-    if message.text == "С начала":
+    if message.text == button_start_page.text:
         create_gen(message)
-    elif message.text == "Домой":
+    elif message.text == button_menu.text:
         menu(message)
     elif message.text.isdigit():
         create_gen(message, page=int(message.text))
     else:
+        bot.reply_to("Возникли проблемы с вашими руками!")
         start_read(message)
+
+
+def get_mp3_filename(message: types.Message) -> str:
+    """Задаём имя mp3 фаулу."""
+
+    return f"temp_{message.chat.username}.mp3"
 
 
 def create_gen(message: types.Message, page: int = 0):
@@ -156,8 +170,26 @@ def speak_text(message: types.Message, page: int = 0):
     bot.send_message(
         message.chat.id,
         "Страницы с картинками не будут озвучены. Жми далее или в меню.",
-        reply_markup=next_markup,
+        reply_markup=get_speak_text_button(),
     )
+    bot.register_next_step_handler(message, read_it)
+
+
+def read_it(message: types.Message):
+    """Обработка выбора сделанного на стартовое сообщение."""
+
+    if message.text == "Следующая страница":
+        speak_text(message)
+    elif message.text.lower() == "домой":
+        menu(message)
+
+
+def get_speak_text_button() -> types.ReplyKeyboardMarkup:
+    """Кнопки после отправки озвученного файла."""
+
+    markup = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+    markup.row(button_next, button_menu)
+    return markup
 
 
 def send_audio(message: types.Message, audio_file):

@@ -1,3 +1,6 @@
+"""
+Объекты генераторов речи.
+"""
 import pyttsx3
 import logging
 from gtts import gTTS
