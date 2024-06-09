@@ -1,11 +1,12 @@
 """
 Обработчик текста.
 """
-import PyPDF2
+
 import logging
 from pathlib import Path
 from typing import Generator
 from abc import ABC, abstractmethod
+import PyPDF2
 from core.engine_types import Speaker
 
 
@@ -20,15 +21,28 @@ class TextSpeakerABC(ABC):
     __file_type: str
 
     def __init__(self, file_name_path: str, speaker: Speaker) -> None:
-        self.init(file_name_path, speaker)
-
-    def init(self, file_name_path: str, speaker: Speaker) -> None:
         if not self.set_path_file(file_name_path):
             raise ValueError(
-                "Невозможно создать файл с таким именем по данному пути,\nубедитесь что путь существует"
+                "Невозможно создать файл с таким именем по данному пути, \
+                \nубедитесь что путь существует"
             )
-        if not self.set_engine(speaker):
+        if not self.set_engine(speaker=speaker):
             raise ValueError("Невозможно создать объект озвучки текста.")
+
+    def __repr__(self) -> str:
+        return f"name: {self.__class__.__name__}, audio gen: {self.get_engine.__class__.__name__}, \
+          read file: {self.file_name}, audio file: {self.file_name_mp3}"
+
+    def __str__(self) -> str:
+        return f"name: {self.__class__.__name__}, read file: {self.file_name}"
+
+    def __eq__(self, __value: object) -> bool:
+        if __value is None or not isinstance(__value, self.__class__):
+            return False
+        return (
+            self.file_name == __value.file_name
+            and self.get_engine.__class__ == __value.get_engine.__class__
+        )
 
     def is_my_file_name(self, file_name: str) -> bool:
         """Вернёт True если это имя pdf файла, или выбросит ошибку"""
@@ -72,6 +86,7 @@ class TextSpeakerABC(ABC):
     @classmethod
     @property
     def type(cls) -> str:
+        """Расширение рабочего файла."""
         return getattr(cls, f"_{cls.__name__}__file_type")
 
     @property
@@ -81,19 +96,28 @@ class TextSpeakerABC(ABC):
 
     @abstractmethod
     def save_to_file(self, text: str):
-        pass
+        """Сохранение текста в файл."""
 
     @abstractmethod
-    def set_engine(self) -> bool:
+    def set_engine(self, speaker: Speaker) -> bool:
+        """Задать генератор голоса."""
+        self._engine: Speaker
+
+    @abstractmethod
+    def __getitem__(self, num_el: int = 0) -> Path:
+        """Возвращает путь к аудиофайлу"""
+
+    @abstractmethod
+    def __len__(self) -> int:
         pass
 
     @abstractmethod
     def extract_text_from_file(self, num_el: int = 0) -> Generator:
-        pass
+        """Генератор для итерации по тексту файла."""
 
     @abstractmethod
-    def get_tmp_filename(name: str) -> str:
-        pass
+    def get_tmp_filename(self, name: str) -> str:
+        """Задаём имя загруженному фаулу."""
 
 
 class PDFSpeaker(TextSpeakerABC):
@@ -104,8 +128,19 @@ class PDFSpeaker(TextSpeakerABC):
 
     __file_type: str = ".pdf"
 
-    def __init__(self, file_name_path: str, speaker: Speaker) -> None:
-        self.init(file_name_path, speaker)
+    def __getitem__(self, num_el: int = 0) -> Path:
+        with open(self.file_name, "rb") as f:
+            reader = PyPDF2.PdfReader(f)
+            if not 0 <= num_el < len(reader.pages):
+                raise IndexError
+            text = reader.pages[num_el].extract_text()
+            if not text:
+                text = "Сттраница пуста."
+            return self.save_to_file(text=f"Страница {num_el} \n {text}")
+
+    def __len__(self) -> int:
+        with open(self.file_name, "rb") as f:
+            return len(PyPDF2.PdfReader(f).pages)
 
     def extract_text_from_file(self, num_el: int = 0) -> Generator:
         """
@@ -114,7 +149,7 @@ class PDFSpeaker(TextSpeakerABC):
         Может принимать номер страницы начала.
         """
 
-        log.info(f"Создаём генератор для чтения документа {self.file_name}")
+        log.info("Создаём генератор для чтения документа %s", self.file_name)
         with open(self.file_name, "rb") as f:
             reader = PyPDF2.PdfReader(f)
             for page_num in reader.pages[num_el:]:
@@ -139,13 +174,16 @@ class PDFSpeaker(TextSpeakerABC):
             return False
         return True
 
-    def save_to_file(self, text):
+    def save_to_file(self, text) -> Path:
+        """Запись текста в файл."""
+
         self.get_engine.save_to_file(
             text=text,
             file_name=str(self.file_name_mp3),
         )
+        return self.file_name_mp3
 
-    def get_tmp_filename(name: str) -> str:
+    def get_tmp_filename(self, name: str) -> str:
         """Задаём имя загруженному фаулу."""
 
         return f"temp_{name}.pdf"

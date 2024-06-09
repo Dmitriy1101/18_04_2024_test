@@ -1,19 +1,20 @@
-from typing import Generator
-import telebot
+"""Бот для озвучки текста."""
+
+
 import os
 import logging
 from pathlib import Path
+import telebot
 from dotenv import load_dotenv
 from telebot import types
 from core.engine import Engine
-from core.speakers import PDFSpeaker
 
 
 # Извлекаем токен в окружение
 load_dotenv()
 
 # Инициализация Telegram бота
-TOKEN: str = os.environ.get("speaker_bot")
+TOKEN: str = os.environ["speaker_bot"]
 bot = telebot.TeleBot(TOKEN)
 
 log = logging.getLogger(__name__)
@@ -43,7 +44,7 @@ def get_file(file_name: str) -> bool:
 def send_welcome(message: types.Message):
     """Обработчик команды start"""
 
-    log.info("Приперся тут один.", extra={message.chat.id: message.chat.username})
+    log.info("Приперся тут один.", extra={str(message.chat.id): message.chat.username})
     bot.send_message(message.chat.id, "Привет! Я озвучиваю PDF книги")
     menu(message)
 
@@ -54,7 +55,9 @@ def keyboard_actions(message: types.Message):
     Метод обработки текста сообщений вне контекста прошлых действий.
     """
 
-    if message.text.lower() == "загрузить pdf файл":
+    if not message.text:
+        return
+    elif message.text.lower() == "загрузить pdf файл":
         bot.send_message(message.chat.id, "Отправьте PDF файл.")
     elif message.text.lower() == "домой":
         menu(message)
@@ -93,7 +96,7 @@ def got_it(message: types.Message):
         bot.send_message(message.chat.id, "Принято.")
         start_read(message)
     else:
-        bot.reply_to("Возникли проблемы с вашими руками!")
+        bot.reply_to(message=message, text="Возникли проблемы с вашими руками!")
         menu(message)
 
 
@@ -117,10 +120,12 @@ def get_psge(message: types.Message):
         create_gen(message)
     elif message.text == button_menu.text:
         menu(message)
+    elif not message.text:
+        create_gen(message)
     elif message.text.isdigit():
         create_gen(message, page=int(message.text))
     else:
-        bot.reply_to("Возникли проблемы с вашими руками!")
+        bot.reply_to(message=message, text="Возникли проблемы с вашими руками!")
         start_read(message)
 
 
@@ -130,7 +135,7 @@ def get_mp3_filename(message: types.Message) -> str:
     return f"temp_{message.chat.username}.mp3"
 
 
-def create_gen(message: types.Message, page: int = 0):
+def create_gen(message: types.Message, page: int = 1):
     """Создаем генератор и записываем его в словарь {имя_пользователя/генератор}"""
     try:
         GENERATORS.set_worker(
@@ -150,23 +155,28 @@ def create_gen(message: types.Message, page: int = 0):
     return menu(message)
 
 
-def speak_text(message: types.Message, page: int = 0):
+def speak_text(message: types.Message):
     """Озвучиваем текст."""
 
-    reader: PDFSpeaker = GENERATORS.get_reader(message.chat.username)
-    gen: Generator = GENERATORS.get_generator(message.chat.username)
     try:
-        text = next(gen)
-    except StopIteration:
+        gen = iter(GENERATORS.get_worker(message.chat.username))
+        audio_path: Path = next(gen)
+    except (StopIteration, IndexError):
         bot.reply_to(message, "Книга закончилась")
-        log.info(
-            "Обработка конца книги.", extra={message.chat.id: message.chat.username}
+        log.debug(
+            "Обработка конца книги.",
+            extra={str(message.chat.id): message.chat.username},
         )
         return menu(message)
-    reader.save_to_file(
-        text,
-    )
-    send_audio(message, reader.file_name_mp3)
+    except KeyError:
+        bot.reply_to(message, "Что-то пошло не так")
+        log.info(
+            "Пропал обработчик файла.",
+            extra={str(message.chat.id): message.chat.username},
+        )
+        return menu(message)
+
+    send_audio(message, audio_path)
     bot.send_message(
         message.chat.id,
         "Страницы с картинками не будут озвучены. Жми далее или в меню.",
@@ -180,7 +190,7 @@ def read_it(message: types.Message):
 
     if message.text == "Следующая страница":
         speak_text(message)
-    elif message.text.lower() == "домой":
+    elif not message.text or message.text.lower() == "домой":
         menu(message)
 
 
@@ -193,6 +203,7 @@ def get_speak_text_button() -> types.ReplyKeyboardMarkup:
 
 
 def send_audio(message: types.Message, audio_file):
+    """Send audio file to user."""
     try:
         with open(audio_file, "rb") as f:
             bot.send_audio(message.chat.id, audio=f)
@@ -209,7 +220,7 @@ def handle_document(message: types.Message):
     file: types.File
     try:
         file = bot.get_file(message.document.file_id)
-    except Exception as e:
+    except BaseException as e:
         log.exception(
             "Невозможно получить ссылку на загрузку файла.",
             exc_info=False,

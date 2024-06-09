@@ -2,5 +2,7 @@
 .vscode
 .pylintrc
 venv
+.ipynb_checkpoints
+Untitled.ipynb
 temp
 __pycache__

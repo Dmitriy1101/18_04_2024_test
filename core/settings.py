@@ -4,16 +4,17 @@
 SPEAKERS: dict[str, Speaker] - перечислены все доступные генераторы речи
 READERS: dict[str, TextTeam] - перечисленны все обработчики файлов
 """
-from core.engine_types import *
-from core.speakers import PDFSpeaker
-from core.voices import Speaker_gTTS, Speaker_pyttsx3
+
 import logging
+from core.engine_types import Speaker, TextTeam
+from core.speakers import PDFSpeaker
+from core.voices import SpeakerGTTS, SpeakerPyttsx3
 
 
 # Генераторы речи
 SPEAKERS: dict[str, Speaker] = {
-    "gTTS": Speaker_gTTS,
-    "pyttsx3": Speaker_pyttsx3,
+    "gTTS": SpeakerGTTS,
+    "pyttsx3": SpeakerPyttsx3,
 }
 # Обработчики текстовых файлов
 READERS: dict[str, TextTeam] = {

@@ -5,7 +5,7 @@
 
 import os
 import logging
-from typing import Generator, Literal
+from typing import Generator, Literal, Self
 from pathlib import Path
 from core.engine_types import TextTeam, Speaker
 from core.settings import SPEAKERS, READERS
@@ -27,7 +27,34 @@ class Worker:
 
     def __init__(self, reader: TextTeam, page: int = 0) -> None:
         self.reader: TextTeam = reader
-        self.generator = self.reader.extract_text_from_file(num_el=page)
+        self.__page: int = page
+
+    def __getitem__(self, num_el: int) -> Path:
+        return self.reader[num_el]
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> Path:
+        if 0 <= self.page <= len(self.reader):
+            v: Path = self.reader[self.page]
+            self.page = self.page + 1
+            return v
+        raise StopIteration
+
+    def set_speaker(self, speaker: Speaker) -> bool:
+        """Set new voice generator"""
+        return self.reader.set_engine(speaker)
+
+    @property
+    def page(self) -> int:
+        """Page of text"""
+        return self.__page
+
+    @page.setter
+    def page(self, page: int) -> Literal[True]:
+        self.__page = page
+        return True
 
 
 class Engine:
@@ -75,18 +102,18 @@ class Engine:
     def __find_reader_or_dafault(self, reader_name: str) -> TextTeam:
         """Ищем обработчик если не находим, берём первый."""
 
-        reader: TextTeam = self.readers.get(reader_name)
+        reader: TextTeam | None = self.readers.get(reader_name)
         if not reader:
-            log.debug(f"Значение {reader_name} не найдено.")
+            log.debug("Значение %s не найдено.", reader_name)
             reader = tuple(self.readers.values())[0]
         return reader
 
     def __find_speaker_or_dafault(self, speaker_name: str) -> Speaker:
         """Ищем обработчик если не находим, берём первый."""
 
-        speaker: Speaker = self.speakers.get(speaker_name)
+        speaker: Speaker | None = self.speakers.get(speaker_name)
         if not speaker:
-            log.debug(f"Значение {speaker_name} не найдено.")
+            log.debug("Значение %s не найдено.", speaker_name)
             speaker = tuple(self.speakers.values())[1]
         return speaker
 
@@ -96,19 +123,8 @@ class Engine:
         """
         gen = self.generators.get(name)
         if gen:
-            log.debug(f"Ошибка получения обработчика файла для пользователя: {name}")
+            log.debug("Ошибка получения обработчика файла для пользователя: %s", name)
             return gen.reader
-        return None
-
-    def get_generator(self, name: str) -> Generator | None:
-        """
-        Получаем генератор по имени пользователя для итерации по документу.
-        """
-
-        gen: Worker | None = self.generators.get(name)
-        if gen:
-            log.debug(f"Ошибка получения генератора для пользователя: {name}")
-            return gen.generator
         return None
 
     def has_tmp_dir(self) -> None:
@@ -117,26 +133,41 @@ class Engine:
         if not os.path.isdir(self.temp_path):
             os.mkdir(self.temp_path)
 
-    def set_reader(
-        self, name: str, reader_name: str, page: int = 0
-    ) -> Literal[True] | None:
+    def set_reader(self, name: str, reader_name: str, page: int = 0) -> bool:
         """Меняем обработчик текста."""
 
         reader: TextTeam | None = self.readers.get(reader_name)
         worker: Worker | None = self.generators.get(name)
         if not worker or not reader:
-            return None
+            log.debug(
+                "Обработчик пользователя: %s, не смог изменить обработчик текста на: %s",
+                name,
+                reader_name,
+            )
+            return False
         path: str = self.get_filename(name, reader)
-        speaker: Speaker = worker.reader.get_engine.__class__
+        speaker = worker.reader.get_engine.__class__
         self.generators[name] = Worker(reader(path, speaker), page)
         return True
 
-    def set_speaker(self, name: str, speaker_name: str) -> Literal[True] | None:
+    def set_speaker(self, name: str, speaker_name: str) -> bool:
         """Задаём новый генератор голоса."""
 
         worker: Worker | None = self.generators.get(name)
         speaker: Speaker | None = self.speakers.get(speaker_name)
         if not worker or not speaker:
-            return None
-        worker.reader.set_engine(speaker.__class__)
+            log.debug(
+                "Обработчик пользователя: %s не смог изменить генератор голоса на: %s",
+                name,
+                speaker_name,
+            )
+            return False
+        worker.set_speaker(speaker)
         return True
+
+    def get_worker(self, name: str) -> Worker:
+        """
+        Получаем генератор по имени пользователя для итерации по документу.
+        """
+
+        return self.generators[name]
