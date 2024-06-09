@@ -45,7 +45,7 @@ class TestPDFSpeaker(TestCase):
 
         obj: PDFSpeaker
         self.assertIsInstance(obj := PDFSpeaker(TEST_FILE, Speaker_pyttsx3), PDFSpeaker)
-        self.assertIsNone(obj.save_to_file("Good day sir!"))
+        self.assertIsInstance(obj.save_to_file("Good day sir!"), Path)
         self.assertTrue(os.path.isfile(obj.file_name_mp3))
         os.remove(obj.file_name_mp3)
 
@@ -54,7 +54,7 @@ class TestPDFSpeaker(TestCase):
 
         obj: PDFSpeaker
         self.assertIsInstance(obj := PDFSpeaker(TEST_FILE, Speaker_gTTS), PDFSpeaker)
-        self.assertIsNone(obj.save_to_file("Good day sir!"))
+        self.assertIsInstance(obj.save_to_file("Good day sir!"), Path)
         self.assertTrue(os.path.isfile(obj.file_name_mp3))
         os.remove(obj.file_name_mp3)
 

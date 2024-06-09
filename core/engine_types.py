@@ -1,32 +1,46 @@
+"""
+Типы генераторов голоса и обработчиков текста.
+"""
+
 from typing import Generator, Protocol
 from pathlib import Path
 
 
 class Speaker(Protocol):
-    def save_to_file(text: str, file_name: str):
+    """Генераторы голоса."""
+
+    def save_to_file(self, text: str, file_name: str):
         ...
 
 
 class TextTeam(Protocol):
-    file_name: Path = ...
-    file_name_mp3: Path = ...
+    """Обработчики текстовых файлов."""
 
-    def __init__(file_name_path: str, speaker: Speaker) -> None:
+    file_name: Path
+    file_name_mp3: Path
+
+    def __init__(self, file_name_path: str, speaker: Speaker) -> None:
         ...
 
-    def get_engine() -> Speaker:
+    def __len__(self) -> int:
         ...
 
-    def set_engine(speaker: Speaker):
+    def __getitem__(self, num_el: int) -> Path:
         ...
 
-    def extract_text_from_file(num_el: int) -> Generator:
+    def get_engine(self) -> Speaker:
         ...
 
-    def save_to_file(text: str):
+    def set_engine(self, speaker: Speaker, *args, **kwargs) -> bool:
+        ...
+
+    def extract_text_from_file(self, num_el: int) -> Generator:
+        ...
+
+    def save_to_file(self, text: str):
         ...
 
     @classmethod
     @property
-    def type() -> str:
+    def type(cls) -> str:
         ...

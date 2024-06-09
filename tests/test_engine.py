@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 from unittest import TestCase
-from core.engine import Engine
+from core.engine import Engine, Worker
 from typing import Generator
 from core.speakers import PDFSpeaker
 from tests.test_speakers import TEST_FILE
@@ -40,26 +40,27 @@ class TestEngine(TestCase):
         self.assertIsNone(self.eng.get_reader("name"))
         self.assertIsNone(self.eng.get_reader(None))
 
-    def test_get_generator(self):
+    def test_get_worker(self):
         """Тестируем извлечение генератора по имени пользователя."""
 
-        self.assertIsInstance(self.eng.get_generator(TEST_USER), Generator)
-        self.assertIsNone(self.eng.get_reader("name"))
-        self.assertIsNone(self.eng.get_reader(None))
+        self.assertIsInstance(self.eng.get_worker(TEST_USER), Worker)
+        self.assertRaises(KeyError, lambda: self.eng.get_worker("name"))
+        self.assertRaises(KeyError, lambda: self.eng.get_worker(1))
+        self.assertRaises(KeyError, lambda: self.eng.get_worker(None))
 
     def test_set_reader(self):
         """Тестируем смену обработчика файла."""
 
         self.assertTrue(self.eng.set_reader(TEST_USER, "pdf"))
-        self.assertIsNone(self.eng.set_reader(TEST_USER, "name"))
-        self.assertIsNone(self.eng.set_reader(TEST_USER, None))
+        self.assertFalse(self.eng.set_reader(TEST_USER, "name"))
+        self.assertFalse(self.eng.set_reader(TEST_USER, None))
 
     def test_set_speaker(self):
         """Тестируем изменение генератора голоса."""
 
         self.assertTrue(self.eng.set_speaker(TEST_USER, "gTTS"))
-        self.assertIsNone(self.eng.set_speaker(TEST_USER, "name"))
-        self.assertIsNone(self.eng.set_speaker(TEST_USER, None))
+        self.assertFalse(self.eng.set_speaker(TEST_USER, "name"))
+        self.assertFalse(self.eng.set_speaker(TEST_USER, None))
 
     def tearDown(self) -> None:
         """Удаляем созданый тестовый файл."""
